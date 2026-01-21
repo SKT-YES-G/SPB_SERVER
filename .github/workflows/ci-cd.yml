@@ -1,0 +1,41 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+
+      - name: Create .env
+        run: |
+          echo "MYSQL_ROOT_PASSWORD=test" >> .env
+          echo "MYSQL_DATABASE=aegis_db" >> .env
+          echo "MYSQL_USER=test" >> .env
+          echo "MYSQL_PASSWORD=test" >> .env
+          echo "DB_URL=jdbc:mysql://mysql:3306/aegis_db?useSSL=false&serverTimezone=UTC" >> .env
+          echo "DB_USERNAME=test" >> .env
+          echo "DB_PASSWORD=test" >> .env
+
+      - name: Grant execute permission
+        run: chmod +x gradlew
+
+      - name: Build
+        run: ./gradlew build -x test
+
+      - name: Docker Compose Test
+        run: |
+          docker-compose up -d --build
+          sleep 40
+          curl -f http://localhost:8080/actuator/health || exit 1
+          docker-compose down
