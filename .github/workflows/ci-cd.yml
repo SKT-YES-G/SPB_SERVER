@@ -2,45 +2,70 @@ name: CI/CD
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: aegis/backend
+  ECS_CLUSTER: aegis-cluster
+  ECS_SERVICE: aegis-backend-service
+  ECS_TASK_DEFINITION: aegis-backend-task
+  CONTAINER_NAME: aegis-backend
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Create .env
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          cat << 'EOF' > .env
-          MYSQL_ROOT_PASSWORD=test
-          MYSQL_DATABASE=aegis_db
-          MYSQL_USER=test
-          MYSQL_PASSWORD=test
-          DB_URL=jdbc:mysql://mysql:3306/aegis_db?useSSL=false&allowPublicKeyRetrieval=true
-          DB_USERNAME=test
-          DB_PASSWORD=test
-          EOF
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Docker Compose Up
-        run: docker compose up -d --build
-
-      - name: Health Check
+      - name: Download current task definition
         run: |
-          echo "Waiting for Spring Boot to start..."
-          for i in {1..30}; do
-            if curl -sf http://localhost:8080/actuator/health; then
-              echo "Application is healthy!"
-              exit 0
-            fi
-            echo "Attempt $i/30..."
-            sleep 3
-          done
-          echo "Health check failed. Container logs:"
-          docker compose logs
-          exit 1
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_TASK_DEFINITION }} \
+            --query taskDefinition \
+            > task-definition.json
 
-      - name: Cleanup
-        if: always()
-        run: docker compose down -v
+      - name: Update task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+          environment-variables: |
+            DB_URL=${{ secrets.DB_URL }}
+            DB_USERNAME=${{ secrets.DB_USERNAME }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
