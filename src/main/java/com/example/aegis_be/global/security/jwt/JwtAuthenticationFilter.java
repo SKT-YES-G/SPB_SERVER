@@ -1,7 +1,9 @@
 package com.example.aegis_be.global.security.jwt;
 
+import com.example.aegis_be.global.common.ApiResponse;
 import com.example.aegis_be.global.error.BusinessException;
 import com.example.aegis_be.global.security.CustomUserDetails;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenService tokenService;
+    private final ObjectMapper objectMapper;
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
@@ -49,6 +52,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             } catch (BusinessException e) {
                 log.debug("Token validation failed: {}", e.getMessage());
+                SecurityContextHolder.clearContext();
+                response.setStatus(e.getErrorCode().getStatus().value());
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.error(e.getErrorCode())));
+                return;
             }
         }
 
