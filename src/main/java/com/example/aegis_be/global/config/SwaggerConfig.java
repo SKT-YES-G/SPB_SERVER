@@ -11,14 +11,37 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfig {
 
-    private static final String SECURITY_SCHEME_NAME = "Bearer Authentication";
+    private static final String SECURITY_SCHEME_NAME = "bearerAuth";
 
     @Bean
     public OpenAPI openAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Aegis API")
-                        .description("백엔드 API")
+                        .title("Aegis 소방서 출동 관리 API")
+                        .description("""
+                                소방서 출동 세션 관리 시스템 백엔드 API
+
+                                ## 인증 방식
+                                - JWT Bearer Token 인증을 사용합니다.
+                                - 로그인 API로 Access Token을 발급받은 후, 우측 상단 **Authorize** 버튼을 클릭하여 토큰을 입력하세요.
+                                - 토큰 입력 시 'Bearer ' 접두사 없이 토큰 값만 입력합니다.
+
+                                ## 토큰 유효기간
+                                - Access Token: 1시간
+                                - Refresh Token: 2주
+
+                                ## 에러 응답 형식
+                                ```json
+                                {
+                                  "success": false,
+                                  "data": null,
+                                  "error": {
+                                    "code": "A001",
+                                    "message": "에러 메시지"
+                                  }
+                                }
+                                ```
+                                """)
                         .version("v1.0.0"))
                 .addSecurityItem(new SecurityRequirement().addList(SECURITY_SCHEME_NAME))
                 .components(new Components()
@@ -26,6 +49,7 @@ public class SwaggerConfig {
                                 .name(SECURITY_SCHEME_NAME)
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
-                                .bearerFormat("JWT")));
+                                .bearerFormat("JWT")
+                                .description("JWT Access Token을 입력하세요. (Bearer 접두사 불필요)")));
     }
 }
