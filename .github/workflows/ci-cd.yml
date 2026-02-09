@@ -61,7 +61,17 @@ jobs:
           aws ecs describe-task-definition \
             --task-definition ${{ env.ECS_TASK_DEFINITION }} \
             --query taskDefinition \
-            > task-definition.json
+            > task-definition-raw.json
+          # Fargate 호환: register-task-definition에서 거부하는 필드 제거
+          python3 -c "
+          import json
+          with open('task-definition-raw.json') as f:
+              td = json.load(f)
+          for key in ['taskDefinitionArn','revision','status','registeredAt','registeredBy','compatibilities','requiresAttributes']:
+              td.pop(key, None)
+          with open('task-definition.json','w') as f:
+              json.dump(td, f, indent=2)
+          "
 
       - name: Update task definition with new image
         id: task-def
@@ -88,3 +98,4 @@ jobs:
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+          wait-for-minutes: 5
