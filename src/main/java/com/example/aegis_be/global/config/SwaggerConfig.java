@@ -17,9 +17,9 @@ public class SwaggerConfig {
     public OpenAPI openAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Aegis 소방서 출동 관리 API")
+                        .title("Aegis API")
                         .description("""
-                                소방서 출동 세션 관리 시스템 백엔드 API
+                                소방서 spring boot 백엔드 API
 
                                 ## 인증 방식
                                 - JWT Bearer Token 인증을 사용합니다.
