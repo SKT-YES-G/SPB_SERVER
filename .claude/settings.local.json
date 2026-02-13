@@ -17,7 +17,11 @@
       "Bash(python:*)",
       "Bash(docker logs:*)",
       "Bash(docker exec:*)",
-      "Bash(docker restart:*)"
+      "Bash(docker restart:*)",
+      "Bash(python3 -c \"import urllib.parse; key=''vh/OhvJbS+AryIivGc4pdPraQjFXKjGiYBI5UMcKztqW4HZSvVMZRgb9NVDhgspA1PiZMvc+J3yhAbgAb7PtNA==''; print\\(urllib.parse.quote\\(key, safe=''''\\)\\)\")",
+      "Bash(docker compose up:*)",
+      "WebFetch(domain:apis.data.go.kr)",
+      "Bash(python3:*)"
     ]
   }
 }

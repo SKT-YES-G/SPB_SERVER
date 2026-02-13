@@ -48,11 +48,11 @@ public class DispatchController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "세션 생성 성공 - 생성된 세션 정보 반환"
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "요청 형식 오류 - 대표자명 누락"
-            ),
+                ),
+                @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                        responseCode = "400",
+                        description = "요청 형식 오류 - 대표자명 누락"
+                ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = "인증 실패 - 유효하지 않은 Access Token"

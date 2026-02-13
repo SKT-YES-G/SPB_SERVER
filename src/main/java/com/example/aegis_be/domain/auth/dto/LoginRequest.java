@@ -20,7 +20,7 @@ public class LoginRequest {
 
     @Schema(
             description = "비밀번호",
-            example = "password123",
+            example = "string",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
     @NotBlank(message = "비밀번호는 필수입니다")
