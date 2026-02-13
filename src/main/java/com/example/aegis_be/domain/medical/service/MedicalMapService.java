@@ -14,10 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -27,15 +24,16 @@ public class MedicalMapService {
 
     private static final double EARTH_RADIUS_KM = 6371.0;
     private static final double DISTANCE_DECAY_RATE = 0.1;
-    private static final double MAX_BED_COUNT = 20.0;
+    private static final double BED_SATURATION_COUNT = 5.0;
     private static final int MAX_RESULTS = 15;
+    private static final int NEARBY_REGION_COUNT = 2;
 
-    private static final double WEIGHT_DISTANCE_WITH_KTAS = 0.3;
-    private static final double WEIGHT_BED_WITH_KTAS = 0.2;
-    private static final double WEIGHT_KTAS = 0.5;
+    private static final double WEIGHT_DISTANCE_WITH_KTAS = 0.5;
+    private static final double WEIGHT_BED_WITH_KTAS = 0.15;
+    private static final double WEIGHT_KTAS = 0.35;
 
-    private static final double WEIGHT_DISTANCE_WITHOUT_KTAS = 0.6;
-    private static final double WEIGHT_BED_WITHOUT_KTAS = 0.4;
+    private static final double WEIGHT_DISTANCE_WITHOUT_KTAS = 0.8;
+    private static final double WEIGHT_BED_WITHOUT_KTAS = 0.2;
 
     private static final double[][] REGION_CENTERS = {
             // { lat, lon, index }
@@ -68,15 +66,26 @@ public class MedicalMapService {
     private final EmergencyApiClient emergencyApiClient;
 
     public HospitalSearchResponse searchHospitals(HospitalSearchRequest request) {
-        String stage1 = resolveRegion(request.getLatitude(), request.getLongitude());
-        log.info("좌표({}, {}) → 시도: {}", request.getLatitude(), request.getLongitude(), stage1);
+        List<String> regions = resolveNearbyRegions(request.getLatitude(), request.getLongitude());
+        log.info("좌표({}, {}) → 인접 시도: {}", request.getLatitude(), request.getLongitude(), regions);
 
-        List<HospitalLocationItem> hospitals = emergencyApiClient.getHospitalList(stage1, null);
-        Map<String, BedAvailabilityItem> bedMap = fetchBedAvailability(stage1, null);
+        List<HospitalLocationItem> hospitals = new ArrayList<>();
+        Map<String, BedAvailabilityItem> bedMap = new HashMap<>();
+
+        for (String region : regions) {
+            try {
+                hospitals.addAll(emergencyApiClient.getHospitalList(region, null));
+                bedMap.putAll(fetchBedAvailability(region, null));
+            } catch (Exception e) {
+                log.warn("시도 '{}' 조회 실패, 건너뜀: {}", region, e.getMessage());
+            }
+        }
 
         boolean ktasApplied = request.getKtasLevel() != null;
 
         List<HospitalRankItem> sorted = hospitals.stream()
+                .collect(Collectors.toMap(HospitalLocationItem::getHpid, h -> h, (a, b) -> a))
+                .values().stream()
                 .map(loc -> {
                     double distance = calculateHaversineDistance(
                             request.getLatitude(), request.getLongitude(),
@@ -159,19 +168,20 @@ public class MedicalMapService {
                 .build();
     }
 
-    private String resolveRegion(double lat, double lon) {
-        double minDist = Double.MAX_VALUE;
-        int minIdx = 0;
+    private List<String> resolveNearbyRegions(double lat, double lon) {
+        record RegionDist(int index, double distance) {}
 
+        List<RegionDist> distances = new ArrayList<>();
         for (int i = 0; i < REGION_CENTERS.length; i++) {
             double dist = calculateHaversineDistance(lat, lon, REGION_CENTERS[i][0], REGION_CENTERS[i][1]);
-            if (dist < minDist) {
-                minDist = dist;
-                minIdx = i;
-            }
+            distances.add(new RegionDist(i, dist));
         }
 
-        return REGION_NAMES[minIdx];
+        return distances.stream()
+                .sorted(Comparator.comparingDouble(RegionDist::distance))
+                .limit(NEARBY_REGION_COUNT)
+                .map(rd -> REGION_NAMES[rd.index()])
+                .toList();
     }
 
     private Map<String, BedAvailabilityItem> fetchBedAvailability(String stage1, String stage2) {
@@ -187,7 +197,7 @@ public class MedicalMapService {
 
     private double calculateScore(double distanceKm, int availableBeds, String hospitalType, Integer ktasLevel) {
         double distanceScore = Math.exp(-DISTANCE_DECAY_RATE * distanceKm);
-        double bedScore = Math.min(availableBeds / MAX_BED_COUNT, 1.0);
+        double bedScore = Math.min(availableBeds / BED_SATURATION_COUNT, 1.0);
 
         if (ktasLevel != null) {
             double ktasScore = calculateKtasScore(ktasLevel, hospitalType);
