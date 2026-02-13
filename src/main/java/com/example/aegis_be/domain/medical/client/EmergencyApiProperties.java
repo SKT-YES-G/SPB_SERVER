@@ -1,0 +1,17 @@
+package com.example.aegis_be.domain.medical.client;
+
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Getter
+@Setter
+@Component
+@ConfigurationProperties(prefix = "emergency-api")
+public class EmergencyApiProperties {
+
+    private String baseUrl;
+    private String serviceKey;
+    private int maxResults;
+}

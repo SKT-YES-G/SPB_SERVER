@@ -14,4 +14,6 @@ public interface DispatchSessionRepository extends JpaRepository<DispatchSession
     List<DispatchSession> findByFireStationIdAndStatusOrderByDispatchedAtDesc(Long fireStationId, DispatchStatus status);
 
     List<DispatchSession> findByFireStationIdOrderByDispatchedAtDesc(Long fireStationId);
+
+    void deleteAllByFireStationId(Long fireStationId);
 }

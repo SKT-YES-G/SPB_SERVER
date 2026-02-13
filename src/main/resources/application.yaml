@@ -41,3 +41,8 @@ management:
 
 cors:
   allowed-origins: ${CORS_ORIGINS}
+
+emergency-api:
+  base-url: https://apis.data.go.kr/B552657/ErmctInfoInqireService
+  service-key: ${EMERGENCY_API_KEY}
+  max-results: 100

@@ -90,6 +90,7 @@ jobs:
             SPRING_DATA_REDIS_HOST=${{ secrets.REDIS_HOST }}
             SPRING_DATA_REDIS_PORT=${{ secrets.REDIS_PORT }}
             SPRING_DATA_REDIS_SSL=${{ secrets.REDIS_SSL }}
+            EMERGENCY_API_KEY=${{ secrets.EMERGENCY_API_KEY }}
 
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2

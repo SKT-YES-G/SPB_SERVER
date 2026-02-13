@@ -27,7 +27,14 @@ public enum ErrorCode {
 
     // Dispatch
     DISPATCH_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "D001", "출동 세션을 찾을 수 없습니다"),
-    DISPATCH_SESSION_NOT_ACTIVE(HttpStatus.BAD_REQUEST, "D002", "이미 종료된 출동 세션입니다");
+    DISPATCH_SESSION_NOT_ACTIVE(HttpStatus.BAD_REQUEST, "D002", "이미 종료된 출동 세션입니다"),
+
+    // Medical
+    EXTERNAL_API_ERROR(HttpStatus.BAD_GATEWAY, "M001", "외부 응급의료 API 호출에 실패했습니다"),
+    API_RESPONSE_PARSE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "M002", "외부 API 응답 파싱에 실패했습니다"),
+    HOSPITAL_NOT_FOUND(HttpStatus.NOT_FOUND, "M003", "병원 정보를 찾을 수 없습니다"),
+    INVALID_COORDINATES(HttpStatus.BAD_REQUEST, "M004", "유효하지 않은 좌표입니다"),
+    INVALID_KTAS_LEVEL(HttpStatus.BAD_REQUEST, "M005", "KTAS 등급은 1~5 사이여야 합니다");
 
     private final HttpStatus status;
     private final String code;

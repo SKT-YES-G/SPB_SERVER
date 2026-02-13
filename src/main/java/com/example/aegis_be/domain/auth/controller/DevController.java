@@ -3,6 +3,7 @@ package com.example.aegis_be.domain.auth.controller;
 import com.example.aegis_be.domain.auth.dto.FireStationCreateRequest;
 import com.example.aegis_be.domain.auth.entity.FireStation;
 import com.example.aegis_be.domain.auth.repository.FireStationRepository;
+import com.example.aegis_be.domain.dispatch.repository.DispatchSessionRepository;
 import com.example.aegis_be.global.common.ApiResponse;
 import com.example.aegis_be.global.error.BusinessException;
 import com.example.aegis_be.global.error.ErrorCode;
@@ -10,20 +11,20 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @Tag(name = "Dev", description = "개발용 API")
-@Profile("!prod")
 @RestController
 @RequestMapping("/api/dev")
 @RequiredArgsConstructor
 public class DevController {
 
     private final FireStationRepository fireStationRepository;
+    private final DispatchSessionRepository dispatchSessionRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Operation(summary = "소방서 계정 생성", description = "테스트용 소방서 계정 생성")
@@ -50,12 +51,14 @@ public class DevController {
         return ApiResponse.success(list);
     }
 
-    @Operation(summary = "소방서 계정 삭제", description = "테스트 계정 삭제")
+    @Operation(summary = "소방서 계정 삭제", description = "테스트 계정 삭제 (연관된 출동 세션도 함께 삭제)")
     @DeleteMapping("/fire-stations/{id}")
+    @Transactional
     public ApiResponse<Void> deleteFireStation(@PathVariable Long id) {
         if (!fireStationRepository.existsById(id)) {
             throw new BusinessException(ErrorCode.FIRE_STATION_NOT_FOUND);
         }
+        dispatchSessionRepository.deleteAllByFireStationId(id);
         fireStationRepository.deleteById(id);
         return ApiResponse.success();
     }
