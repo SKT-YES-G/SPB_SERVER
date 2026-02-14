@@ -16,4 +16,5 @@ public class BedAvailabilityItem {
     private int hvicc;
     private int hvgc;
     private String hvamyn;
+    private String hv1;
 }

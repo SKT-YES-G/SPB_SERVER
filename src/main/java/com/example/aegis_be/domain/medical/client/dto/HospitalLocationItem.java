@@ -13,6 +13,8 @@ public class HospitalLocationItem {
     private String dutyTel1;
     private String dutyTel3;
     private String dgidIdName;
+    private String dutyInf;
+    private String dutyEryn;
     private double wgs84Lat;
     private double wgs84Lon;
 }

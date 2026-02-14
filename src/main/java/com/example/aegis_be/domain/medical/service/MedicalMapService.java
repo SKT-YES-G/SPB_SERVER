@@ -2,14 +2,10 @@ package com.example.aegis_be.domain.medical.service;
 
 import com.example.aegis_be.domain.medical.client.EmergencyApiClient;
 import com.example.aegis_be.domain.medical.client.dto.BedAvailabilityItem;
-import com.example.aegis_be.domain.medical.client.dto.HospitalBasicInfoItem;
 import com.example.aegis_be.domain.medical.client.dto.HospitalLocationItem;
-import com.example.aegis_be.domain.medical.dto.HospitalDetailResponse;
 import com.example.aegis_be.domain.medical.dto.HospitalRankItem;
 import com.example.aegis_be.domain.medical.dto.HospitalSearchRequest;
 import com.example.aegis_be.domain.medical.dto.HospitalSearchResponse;
-import com.example.aegis_be.global.error.BusinessException;
-import com.example.aegis_be.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +22,7 @@ public class MedicalMapService {
     private static final double DISTANCE_DECAY_RATE = 0.1;
     private static final double BED_SATURATION_COUNT = 5.0;
     private static final int MAX_RESULTS = 15;
+    private static final int DEPT_FETCH_LIMIT = 30;
     private static final int NEARBY_REGION_COUNT = 2;
 
     private static final double WEIGHT_DISTANCE_WITH_KTAS = 0.5;
@@ -36,7 +33,6 @@ public class MedicalMapService {
     private static final double WEIGHT_BED_WITHOUT_KTAS = 0.2;
 
     private static final double[][] REGION_CENTERS = {
-            // { lat, lon, index }
             {37.5665, 126.978},   // 0  서울특별시
             {35.1796, 129.0756},  // 1  부산광역시
             {35.8714, 128.6014},  // 2  대구광역시
@@ -82,31 +78,90 @@ public class MedicalMapService {
         }
 
         boolean ktasApplied = request.getKtasLevel() != null;
+        List<String> departments = request.getDepartments();
+        boolean deptFilterActive = departments != null && !departments.isEmpty();
 
-        List<HospitalRankItem> sorted = hospitals.stream()
+        // 중복 제거 + Filter 0: 응급실 운영 중(hvamyn)인 병원만
+        List<HospitalLocationItem> filtered = hospitals.stream()
                 .collect(Collectors.toMap(HospitalLocationItem::getHpid, h -> h, (a, b) -> a))
                 .values().stream()
+                .filter(loc -> {
+                    BedAvailabilityItem bed = bedMap.get(loc.getHpid());
+                    return bed != null && "Y".equalsIgnoreCase(bed.getHvamyn());
+                })
+                .toList();
+
+        log.info("Filter 0 (응급실 운영) 통과: {}개 병원", filtered.size());
+
+        // Filter 1: 진료과 매칭 (departments 입력 시에만)
+        // 진료과(dutyInf)는 상세 API에서만 제공 → 병원별 순차 조회 (rate limit 회피)
+        // 효율화: 거리순 상위 DEPT_FETCH_LIMIT개만 진료과 조회
+        Map<String, String> departmentMap = new HashMap<>();
+        if (deptFilterActive) {
+            List<HospitalLocationItem> candidates = filtered.stream()
+                    .sorted(Comparator.comparingDouble(loc ->
+                            calculateHaversineDistance(request.getLatitude(), request.getLongitude(),
+                                    loc.getWgs84Lat(), loc.getWgs84Lon())))
+                    .limit(DEPT_FETCH_LIMIT)
+                    .toList();
+
+            for (HospitalLocationItem loc : candidates) {
+                try {
+                    String dutyInf = emergencyApiClient.fetchHospitalDepartments(loc.getHpid());
+                    if (dutyInf != null) {
+                        departmentMap.put(loc.getHpid(), dutyInf);
+                    }
+                } catch (Exception e) {
+                    log.warn("진료과 조회 실패 ({}): {}", loc.getHpid(), e.getMessage());
+                }
+            }
+
+            filtered = filtered.stream()
+                    .filter(loc -> {
+                        String dutyInf = departmentMap.get(loc.getHpid());
+                        if (dutyInf == null || dutyInf.isBlank()) {
+                            return false;
+                        }
+                        return departments.stream().anyMatch(dutyInf::contains);
+                    })
+                    .toList();
+
+            log.info("Filter 1 (진료과 매칭) 통과: {}개 병원", filtered.size());
+        }
+
+        // 점수 산출 및 순위
+        List<HospitalRankItem> sorted = filtered.stream()
                 .map(loc -> {
                     double distance = calculateHaversineDistance(
                             request.getLatitude(), request.getLongitude(),
                             loc.getWgs84Lat(), loc.getWgs84Lon());
 
                     BedAvailabilityItem bed = bedMap.get(loc.getHpid());
-                    int availableBeds = (bed != null) ? bed.getHvec() : 0;
+                    int hvec = (bed != null) ? Math.max(bed.getHvec(), 0) : 0;
+                    int hvicc = (bed != null) ? Math.max(bed.getHvicc(), 0) : 0;
+                    int hvgc = (bed != null) ? Math.max(bed.getHvgc(), 0) : 0;
+                    int availableBeds = hvec + hvicc + hvgc;
 
                     double score = calculateScore(distance, availableBeds, loc.getDgidIdName(),
                             request.getKtasLevel());
+
+                    String depts = departmentMap.getOrDefault(loc.getHpid(), loc.getDutyInf());
 
                     return HospitalRankItem.builder()
                             .score(Math.round(score * 100.0) / 100.0)
                             .hpid(loc.getHpid())
                             .hospitalName(loc.getDutyName())
-                            .address(loc.getDutyAddr())
-                            .tel(loc.getDutyTel1())
-                            .emergencyTel(loc.getDutyTel3())
                             .distanceKm(Math.round(distance * 10.0) / 10.0)
-                            .availableBeds(Math.max(availableBeds, 0))
+                            .emergencyBeds(hvec)
+                            .icuBeds(hvicc)
+                            .inpatientBeds(hvgc)
+                            .availableBeds(availableBeds)
                             .hospitalType(loc.getDgidIdName())
+                            .departments(depts)
+                            .address(loc.getDutyAddr())
+                            .mainTel(loc.getDutyTel1())
+                            .emergencyTel(loc.getDutyTel3())
+                            .dutyTel(bed != null ? bed.getHv1() : null)
                             .latitude(loc.getWgs84Lat())
                             .longitude(loc.getWgs84Lon())
                             .build();
@@ -115,22 +170,26 @@ public class MedicalMapService {
                 .limit(MAX_RESULTS)
                 .toList();
 
+        // 최종 결과에 대해 진료과 정보 보강 (아직 조회 안 된 병원만)
+        for (HospitalRankItem item : sorted) {
+            if (!departmentMap.containsKey(item.getHpid())) {
+                try {
+                    String dutyInf = emergencyApiClient.fetchHospitalDepartments(item.getHpid());
+                    if (dutyInf != null) {
+                        departmentMap.put(item.getHpid(), dutyInf);
+                    }
+                } catch (Exception e) {
+                    log.warn("진료과 보강 조회 실패 ({}): {}", item.getHpid(), e.getMessage());
+                }
+            }
+        }
+
         List<HospitalRankItem> ranked = new ArrayList<>();
         for (int i = 0; i < sorted.size(); i++) {
             HospitalRankItem item = sorted.get(i);
-            ranked.add(HospitalRankItem.builder()
+            ranked.add(item.toBuilder()
                     .rank(i + 1)
-                    .score(item.getScore())
-                    .hpid(item.getHpid())
-                    .hospitalName(item.getHospitalName())
-                    .address(item.getAddress())
-                    .tel(item.getTel())
-                    .emergencyTel(item.getEmergencyTel())
-                    .distanceKm(item.getDistanceKm())
-                    .availableBeds(item.getAvailableBeds())
-                    .hospitalType(item.getHospitalType())
-                    .latitude(item.getLatitude())
-                    .longitude(item.getLongitude())
+                    .departments(departmentMap.get(item.getHpid()))
                     .build());
         }
 
@@ -138,33 +197,6 @@ public class MedicalMapService {
                 .totalCount(ranked.size())
                 .ktasApplied(ktasApplied)
                 .hospitals(ranked)
-                .build();
-    }
-
-    public HospitalDetailResponse getHospitalDetail(String hpid) {
-        HospitalBasicInfoItem info = emergencyApiClient.getHospitalBasicInfo(hpid);
-
-        return HospitalDetailResponse.builder()
-                .hpid(info.getHpid())
-                .hospitalName(info.getDutyName())
-                .address(info.getDutyAddr())
-                .tel(info.getDutyTel1())
-                .emergencyTel(info.getDutyTel3())
-                .hospitalType(info.getDgidIdName())
-                .emergencyOperating(info.getDutyEryn())
-                .hospitalizationAvailable(info.getDutyHayn())
-                .bedCount(info.getDutyHano())
-                .departments(info.getDutyInf())
-                .latitude(info.getWgs84Lat())
-                .longitude(info.getWgs84Lon())
-                .bedInfo(HospitalDetailResponse.BedInfo.builder()
-                        .emergencyBeds(info.getHperyn())
-                        .operatingRooms(info.getHpopyn())
-                        .icuBeds(info.getHpicuyn())
-                        .neonatalIcuBeds(info.getHpnicuyn())
-                        .generalBeds(info.getHpbdn())
-                        .surgicalBeds(info.getHpgryn())
-                        .build())
                 .build();
     }
 
