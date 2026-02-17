@@ -1,7 +1,6 @@
 package com.example.aegis_be.domain.medical.client;
 
 import com.example.aegis_be.domain.medical.client.dto.BedAvailabilityItem;
-import com.example.aegis_be.domain.medical.client.dto.HospitalBasicInfoItem;
 import com.example.aegis_be.domain.medical.client.dto.HospitalLocationItem;
 import com.example.aegis_be.global.error.BusinessException;
 import com.example.aegis_be.global.error.ErrorCode;
@@ -62,58 +61,18 @@ public class EmergencyApiClient {
         return parseBedAvailability(xml);
     }
 
-    public HospitalBasicInfoItem getHospitalBasicInfo(String hpid) {
+    public String fetchHospitalDepartments(String hpid) {
         String url = properties.getBaseUrl() + "/getEgytBassInfoInqire"
                 + "?serviceKey=" + encode(properties.getServiceKey())
                 + "&HPID=" + hpid
                 + "&numOfRows=1&pageNo=1";
 
-        String xml = callApi(url, "hospital-basic-info");
+        String xml = callApi(url, "hospital-departments");
         List<Element> items = getItemElements(xml);
         if (items.isEmpty()) {
-            throw new BusinessException(ErrorCode.HOSPITAL_NOT_FOUND);
+            return null;
         }
-
-        Element item = items.get(0);
-        return HospitalBasicInfoItem.builder()
-                .hpid(getText(item, "hpid"))
-                .dutyName(getText(item, "dutyName"))
-                .dutyAddr(getText(item, "dutyAddr"))
-                .dutyTel1(getText(item, "dutyTel1"))
-                .dutyTel3(getText(item, "dutyTel3"))
-                .dgidIdName(getText(item, "dgidIdName"))
-                .dutyEryn(getText(item, "dutyEryn"))
-                .dutyHayn(getText(item, "dutyHayn"))
-                .dutyHano(getText(item, "dutyHano"))
-                .dutyInf(getText(item, "dutyInf"))
-                .dutyMapimg(getText(item, "dutyMapimg"))
-                .dutyTime1s(getText(item, "dutyTime1s"))
-                .dutyTime1c(getText(item, "dutyTime1c"))
-                .dutyTime2s(getText(item, "dutyTime2s"))
-                .dutyTime2c(getText(item, "dutyTime2c"))
-                .dutyTime3s(getText(item, "dutyTime3s"))
-                .dutyTime3c(getText(item, "dutyTime3c"))
-                .dutyTime4s(getText(item, "dutyTime4s"))
-                .dutyTime4c(getText(item, "dutyTime4c"))
-                .dutyTime5s(getText(item, "dutyTime5s"))
-                .dutyTime5c(getText(item, "dutyTime5c"))
-                .dutyTime6s(getText(item, "dutyTime6s"))
-                .dutyTime6c(getText(item, "dutyTime6c"))
-                .dutyTime7s(getText(item, "dutyTime7s"))
-                .dutyTime7c(getText(item, "dutyTime7c"))
-                .dutyTime8s(getText(item, "dutyTime8s"))
-                .dutyTime8c(getText(item, "dutyTime8c"))
-                .wgs84Lat(getDouble(item, "wgs84Lat"))
-                .wgs84Lon(getDouble(item, "wgs84Lon"))
-                .hpbdn(getInt(item, "hpbdn"))
-                .hpccuyn(getInt(item, "hpccuyn"))
-                .hpcuyn(getInt(item, "hpcuyn"))
-                .hperyn(getInt(item, "hperyn"))
-                .hpgryn(getInt(item, "hpgryn"))
-                .hpicuyn(getInt(item, "hpicuyn"))
-                .hpnicuyn(getInt(item, "hpnicuyn"))
-                .hpopyn(getInt(item, "hpopyn"))
-                .build();
+        return getText(items.get(0), "dgidIdName");
     }
 
     private String callApi(String url, String apiName) {
@@ -184,6 +143,8 @@ public class EmergencyApiClient {
                     .dutyTel1(getText(item, "dutyTel1"))
                     .dutyTel3(getText(item, "dutyTel3"))
                     .dgidIdName(getText(item, "dutyEmclsName"))
+                    .dutyInf(getText(item, "dutyInf"))
+                    .dutyEryn(getText(item, "dutyEryn"))
                     .wgs84Lat(getDouble(item, "wgs84Lat"))
                     .wgs84Lon(getDouble(item, "wgs84Lon"))
                     .build());
@@ -207,6 +168,7 @@ public class EmergencyApiClient {
                     .hvicc(getInt(item, "hvicc"))
                     .hvgc(getInt(item, "hvgc"))
                     .hvamyn(getText(item, "hvamyn"))
+                    .hv1(getText(item, "hv1"))
                     .build());
         }
 

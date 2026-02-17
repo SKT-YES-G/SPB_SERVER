@@ -7,6 +7,8 @@ import com.example.aegis_be.domain.dispatch.dto.DispatchSessionResponse;
 import com.example.aegis_be.domain.dispatch.entity.DispatchSession;
 import com.example.aegis_be.domain.dispatch.entity.DispatchStatus;
 import com.example.aegis_be.domain.dispatch.repository.DispatchSessionRepository;
+import com.example.aegis_be.domain.eventlog.entity.EventType;
+import com.example.aegis_be.domain.eventlog.service.EventLogService;
 import com.example.aegis_be.global.error.BusinessException;
 import com.example.aegis_be.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class DispatchService {
 
     private final DispatchSessionRepository dispatchSessionRepository;
     private final FireStationRepository fireStationRepository;
+    private final EventLogService eventLogService;
 
     @Transactional
     public DispatchSessionResponse createSession(String name, DispatchSessionCreateRequest request) {
@@ -36,6 +39,8 @@ public class DispatchService {
                 .build();
 
         dispatchSessionRepository.save(session);
+
+        eventLogService.log(session, EventType.SESSION_START, "출동 세션 시작");
 
         log.info("Dispatch session created: sessionId={}, representative={}", session.getId(), request.getRepresentativeName());
 
@@ -76,6 +81,8 @@ public class DispatchService {
         }
 
         session.complete();
+
+        eventLogService.log(session, EventType.SESSION_END, "출동 세션 종료");
 
         log.info("Dispatch session completed: sessionId={}", sessionId);
 

@@ -1,12 +1,10 @@
 package com.example.aegis_be.domain.medical.controller;
 
-import com.example.aegis_be.domain.medical.dto.HospitalDetailResponse;
 import com.example.aegis_be.domain.medical.dto.HospitalSearchRequest;
 import com.example.aegis_be.domain.medical.dto.HospitalSearchResponse;
 import com.example.aegis_be.domain.medical.service.MedicalMapService;
 import com.example.aegis_be.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Medical Map", description = "응급 병원 추천 API - 현재 위치 기반 최적 응급 병원 검색 및 상세 조회")
+@Tag(name = "Medical Map", description = "응급 병원 추천 API - 현재 위치 기반 최적 응급 병원 검색")
 @SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/medical/hospitals")
@@ -30,6 +28,11 @@ public class MedicalMapController {
             description = """
                     현재 위치 좌표를 기반으로 최적의 응급 병원 목록을 검색합니다.
 
+                    **필터링**:
+                    - Filter 0: 응급실 운영 중인 병원만 포함
+                    - Filter 1: 진료과 중 하나라도 일치하는 병원만 포함 (departments 입력 시)
+                    진료과는 프론트가 요청 때 함께 넣어서 입력해야 합니다.
+
                     **처리 흐름**:
                     - 좌표 기반 인접 시/도 2개를 자동 판별하여 병원 목록 통합 조회
                     - 입력된 좌표에서 각 병원까지의 실제 직선거리(Haversine)를 계산
@@ -38,18 +41,31 @@ public class MedicalMapController {
 
                     **점수 산출 방식**:
                     - 거리 점수: 지수 감쇠 적용 (가까울수록 급격히 높은 점수, 약 7km마다 점수 반감)
-                    - 병상 점수: 5병상 이상이면 만점, 0병상은 0점 (조기 포화 방식)
+                    - 병상 점수: 가용병상(응급+중환자+입원) 5병상 이상이면 만점, 0병상은 0점
                     - KTAS 점수: 중증도와 병원 유형 적합도 매칭
 
                     **가중치**:
                     - KTAS 입력 시: 거리 50% + KTAS 35% + 병상 15%
                     - KTAS 미입력 시: 거리 80% + 병상 20%
 
-                    **응답 정보** (병원별):
-                    - 순위(rank), 종합 점수(score, 0.0~1.0)
-                    - 병원 고유 ID(hpid), 병원명, 주소, 대표 전화번호, 응급실 전화번호
-                    - 현재 위치로부터의 거리(km), 가용 응급 병상 수
-                    - 병원 유형(권역응급의료센터/지역응급의료센터 등), 좌표(위도/경도)
+                    **응답 필드 (Response Fields)**:
+                    - rank (순위)
+                    - score (종합 점수, 0.0~1.0)
+                    - hpid (병원 고유 ID)
+                    - hospitalName (병원명)
+                    - distanceKm (거리, km)
+                    - emergencyBeds (응급실 가용 병상 수)
+                    - icuBeds (중환자실 가용 병상 수)
+                    - inpatientBeds (입원실 가용 병상 수)
+                    - availableBeds (가용 병상 수 합계 = 응급 + 중환자 + 입원)
+                    - hospitalType (병원 유형)
+                    - departments (진료과목)
+                    - address (주소)
+                    - mainTel (대표 전화번호)
+                    - emergencyTel (응급실 전화번호)
+                    - dutyTel (당직 전화번호) : 미제공 경우 많음
+                    - latitude (위도)
+                    - longitude (경도)
 
                     **인증**: 필수 (Bearer Token)
                     """
@@ -76,45 +92,5 @@ public class MedicalMapController {
     public ApiResponse<HospitalSearchResponse> searchHospitals(
             @Valid @RequestBody HospitalSearchRequest request) {
         return ApiResponse.success(medicalMapService.searchHospitals(request));
-    }
-
-    @Operation(
-            summary = "병원 상세 정보 조회",
-            description = """
-                    병원 고유 ID(hpid)로 상세 정보를 조회합니다.
-
-                    **응답 정보**:
-                    - 기본 정보: 병원 고유 ID(hpid), 병원명, 주소, 대표 전화번호, 응급실 전화번호
-                    - 분류 정보: 병원 유형(권역응급의료센터/지역응급의료센터 등), 진료과목
-                    - 운영 정보: 응급실 운영 여부, 입원 가능 여부, 총 병상 수
-                    - 병상 현황: 응급실, 수술실, 중환자실, 신생아중환자실, 일반입원실, 외과입원실 병상 수
-                    - 위치 정보: 좌표(위도/경도)
-
-                    **인증**: 필수 (Bearer Token)
-                    """
-    )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "조회 성공 - 병원 상세 정보 반환"
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "401",
-                    description = "인증 실패 - 유효하지 않은 Access Token"
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "404",
-                    description = "병원 없음 - 해당 ID의 병원을 찾을 수 없음"
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "502",
-                    description = "외부 API 오류 - 응급의료 정보 API 호출 실패"
-            )
-    })
-    @GetMapping("/{hpid}")
-    public ApiResponse<HospitalDetailResponse> getHospitalDetail(
-            @Parameter(description = "병원 고유 ID", example = "A1100017", required = true)
-            @PathVariable String hpid) {
-        return ApiResponse.success(medicalMapService.getHospitalDetail(hpid));
     }
 }

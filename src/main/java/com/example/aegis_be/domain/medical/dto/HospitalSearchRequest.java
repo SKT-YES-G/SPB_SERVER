@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Schema(description = "응급 병원 검색 요청")
 @Getter
 @NoArgsConstructor
@@ -24,8 +26,11 @@ public class HospitalSearchRequest {
     @Max(value = 132, message = "유효하지 않은 경도입니다")
     private Double longitude;
 
-    @Schema(description = "KTAS 등급 (1~5)", example = "3")
+    @Schema(description = "KTAS 등급 (1~5, 선택)", example = "3")
     @Min(value = 1, message = "KTAS 등급은 1~5 사이여야 합니다")
     @Max(value = 5, message = "KTAS 등급은 1~5 사이여야 합니다")
     private Integer ktasLevel;
+
+    @Schema(description = "AI 팀 추천 진료과 목록", example = "[\"내과\", \"외과\"]")
+    private List<String> departments;
 }

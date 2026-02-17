@@ -10,7 +10,7 @@ import lombok.Getter;
 public class LoginResponse {
 
     @Schema(
-            description = "Access Token (1시간 유효) - API 요청 시 Authorization: Bearer {token} 헤더에 포함",
+            description = "Access Token (2시간 유효) - API 요청 시 Authorization: Bearer {token} 헤더에 포함",
             example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
     )
     private String accessToken;
