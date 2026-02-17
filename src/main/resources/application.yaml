@@ -27,7 +27,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
-  access-token-validity: 3600000
+  access-token-validity: 7200000
   refresh-token-validity: 1209600000
 
 management:
@@ -41,6 +41,10 @@ management:
 
 cors:
   allowed-origins: ${CORS_ORIGINS}
+
+ai-server:
+  base-url: ${AI_SERVER_URL:http://localhost:8000}
+  easy-translation-path: /api/easy-translation
 
 emergency-api:
   base-url: https://apis.data.go.kr/B552657/ErmctInfoInqireService
