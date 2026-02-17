@@ -26,7 +26,7 @@ public class HospitalSearchRequest {
     @Max(value = 132, message = "유효하지 않은 경도입니다")
     private Double longitude;
 
-    @Schema(description = "KTAS 등급 (1~5)", example = "3")
+    @Schema(description = "KTAS 등급 (1~5, 선택)", example = "3")
     @Min(value = 1, message = "KTAS 등급은 1~5 사이여야 합니다")
     @Max(value = 5, message = "KTAS 등급은 1~5 사이여야 합니다")
     private Integer ktasLevel;

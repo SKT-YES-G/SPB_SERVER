@@ -31,6 +31,7 @@ public class MedicalMapController {
                     **필터링**:
                     - Filter 0: 응급실 운영 중인 병원만 포함
                     - Filter 1: 진료과 중 하나라도 일치하는 병원만 포함 (departments 입력 시)
+                    진료과는 프론트가 요청 때 함께 넣어서 입력해야 합니다.
 
                     **처리 흐름**:
                     - 좌표 기반 인접 시/도 2개를 자동 판별하여 병원 목록 통합 조회

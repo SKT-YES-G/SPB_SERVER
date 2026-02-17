@@ -62,8 +62,10 @@ public class MedicalMapService {
     private final EmergencyApiClient emergencyApiClient;
 
     public HospitalSearchResponse searchHospitals(HospitalSearchRequest request) {
+        Integer ktasLevel = request.getKtasLevel();
+
         List<String> regions = resolveNearbyRegions(request.getLatitude(), request.getLongitude());
-        log.info("좌표({}, {}) → 인접 시도: {}", request.getLatitude(), request.getLongitude(), regions);
+        log.info("좌표({}, {}) → 인접 시도: {}, KTAS: {}", request.getLatitude(), request.getLongitude(), regions, ktasLevel);
 
         List<HospitalLocationItem> hospitals = new ArrayList<>();
         Map<String, BedAvailabilityItem> bedMap = new HashMap<>();
@@ -77,7 +79,7 @@ public class MedicalMapService {
             }
         }
 
-        boolean ktasApplied = request.getKtasLevel() != null;
+        boolean ktasApplied = ktasLevel != null;
         List<String> departments = request.getDepartments();
         boolean deptFilterActive = departments != null && !departments.isEmpty();
 
@@ -143,7 +145,7 @@ public class MedicalMapService {
                     int availableBeds = hvec + hvicc + hvgc;
 
                     double score = calculateScore(distance, availableBeds, loc.getDgidIdName(),
-                            request.getKtasLevel());
+                            ktasLevel);
 
                     String depts = departmentMap.getOrDefault(loc.getHpid(), loc.getDutyInf());
 
