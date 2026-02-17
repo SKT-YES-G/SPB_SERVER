@@ -27,7 +27,7 @@ public class SwaggerConfig {
                                 - 토큰 입력 시 'Bearer ' 접두사 없이 토큰 값만 입력합니다.
 
                                 ## 토큰 유효기간
-                                - Access Token: 1시간
+                                - Access Token: 2시간
                                 - Refresh Token: 2주
 
                                 ## 에러 응답 형식

@@ -69,7 +69,7 @@ public class AuthController {
                     소방서명과 비밀번호로 인증하여 JWT 토큰을 발급받습니다.
 
                     **토큰 정책**:
-                    - Access Token: 1시간 유효, API 요청 시 Authorization 헤더에 Bearer 토큰으로 전달
+                    - Access Token: 2시간 유효, API 요청 시 Authorization 헤더에 Bearer 토큰으로 전달
                     - Refresh Token: 2주 유효, Access Token 만료 시 갱신용으로 사용
 
                     **보안**:

@@ -10,7 +10,7 @@ import lombok.Getter;
 public class TokenRefreshResponse {
 
     @Schema(
-            description = "새로 발급된 Access Token (1시간 유효)",
+            description = "새로 발급된 Access Token (2시간 유효)",
             example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
     )
     private String accessToken;
