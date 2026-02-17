@@ -68,6 +68,7 @@ public class DispatchController {
     @Operation(
             summary = "출동 세션 조회",
             description = """
+                    (예비용 api)
                     세션 ID로 특정 출동 세션의 상세 정보를 조회합니다.
 
                     **응답 정보**:
@@ -107,6 +108,7 @@ public class DispatchController {
     @Operation(
             summary = "활성 세션 목록 조회",
             description = """
+                    (예비용 api)
                     현재 출동 중(ACTIVE)인 세션 목록을 조회합니다.
 
                     **필터 조건**: status = ACTIVE
