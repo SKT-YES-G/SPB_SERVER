@@ -19,20 +19,20 @@ public class AiApiClient {
     private final RestClient restClient;
     private final AiServerProperties aiServerProperties;
 
-    public String requestEasyTranslation(String translatedText, String language) {
+    public String requestEasyTranslation(String translatedText) {
         String url = aiServerProperties.getBaseUrl() + aiServerProperties.getEasyTranslationPath();
         try {
             Map<String, String> response = restClient.post()
                     .uri(url)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("text", translatedText, "language", language))
+                    .body(Map.of("text", translatedText))
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});
 
-            if (response == null || !response.containsKey("easyTranslation")) {
+            if (response == null || !response.containsKey("simplified_text")) {
                 throw new BusinessException(ErrorCode.AI_SERVER_ERROR);
             }
-            return response.get("easyTranslation");
+            return response.get("simplified_text");
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {

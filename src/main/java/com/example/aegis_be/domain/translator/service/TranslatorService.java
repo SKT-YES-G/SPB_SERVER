@@ -63,8 +63,7 @@ public class TranslatorService {
                 .filter(r -> r.getDispatchSession().getId().equals(sessionId))
                 .orElseThrow(() -> new BusinessException(ErrorCode.TRANSLATION_RECORD_NOT_FOUND));
 
-        String easyTranslation = aiApiClient.requestEasyTranslation(
-                record.getTranslatedText(), record.getLanguage());
+        String easyTranslation = aiApiClient.requestEasyTranslation(record.getTranslatedText());
 
         record.updateEasyTranslation(easyTranslation);
         log.info("Easy translation generated: translationId={}, sessionId={}", translationId, sessionId);

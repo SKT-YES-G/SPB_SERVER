@@ -36,7 +36,6 @@ public class TranslatorController {
 
                     실시간 번역 결과를 저장합니다. easyTranslation은 처음에 null로 보낼 수 있고,
                     이후 쉬운 번역이 준비되면 PATCH /{translationId}/easy로 업데이트합니다.
-                    쉬운 번역의 경우 요청할 때만 받기 때문에 스프링 쪽에서 연동하면 됩니다.
 
                     **요청 예시**:
                     ```json

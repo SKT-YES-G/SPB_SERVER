@@ -44,7 +44,7 @@ cors:
 
 ai-server:
   base-url: ${AI_SERVER_URL:http://localhost:8000}
-  easy-translation-path: /api/easy-translation
+  easy-translation-path: /translate/simplify
 
 emergency-api:
   base-url: https://apis.data.go.kr/B552657/ErmctInfoInqireService
