@@ -69,6 +69,9 @@ public class AmbulanceReport {
     @Column(name = "assessment", columnDefinition = "TEXT")
     private String assessment;
 
+    @Column(name = "incident_date_time")
+    private LocalDateTime incidentDateTime;
+
     // === 시각 ===
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -110,10 +113,11 @@ public class AmbulanceReport {
         this.checklistData = checklistData;
     }
 
-    // 구급대원: 주호소 + 평가소견
-    public void updateAssessment(String chiefComplaint, String assessment) {
+    // 구급대원: 주호소 + 평가소견 + 발생일시
+    public void updateAssessment(String chiefComplaint, String assessment, LocalDateTime incidentDateTime) {
         this.chiefComplaint = chiefComplaint;
         this.assessment = assessment;
+        this.incidentDateTime = incidentDateTime;
     }
 
     @PreUpdate

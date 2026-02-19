@@ -59,6 +59,9 @@ public class AmbulanceReportResponse {
     @Schema(description = "평가소견", example = "급성 심근경색 의심", nullable = true)
     private String assessment;
 
+    @Schema(description = "발생일시", example = "2026-02-19T14:30:00", nullable = true)
+    private LocalDateTime incidentDateTime;
+
     // === 시각 ===
 
     @Schema(description = "생성시각 (KST)", example = "2024-01-15T14:30:00")
@@ -83,6 +86,7 @@ public class AmbulanceReportResponse {
                 .checklistData(report.getChecklistData())
                 .chiefComplaint(report.getChiefComplaint())
                 .assessment(report.getAssessment())
+                .incidentDateTime(report.getIncidentDateTime())
                 .createdAt(report.getCreatedAt())
                 .updatedAt(report.getUpdatedAt())
                 .build();

@@ -78,7 +78,7 @@ public class AmbulanceReportService {
     public AmbulanceReportResponse updateAssessment(String name, Long sessionId, AssessmentUpdateRequest request) {
         DispatchSession session = findSessionByFireStation(name, sessionId);
         AmbulanceReport report = findOrCreateReport(session, sessionId);
-        report.updateAssessment(request.getChiefComplaint(), request.getAssessment());
+        report.updateAssessment(request.getChiefComplaint(), request.getAssessment(), request.getIncidentDateTime());
         log.info("Assessment updated: reportId={}, sessionId={}", report.getId(), sessionId);
         return AmbulanceReportResponse.from(report);
     }
