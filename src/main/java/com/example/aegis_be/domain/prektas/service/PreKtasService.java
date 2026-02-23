@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -35,16 +37,25 @@ public class PreKtasService {
                 .orElseGet(() -> preKtasRepository.save(new PreKtas(session)));
 
         Integer oldLevel = preKtas.getAiKtasLevel();
-        preKtas.updateAiKtas(request.getLevel(), request.getReasoning());
+        String oldStage2 = preKtas.getStage2();
+        String oldStage3 = preKtas.getStage3();
+        String oldStage4 = preKtas.getStage4();
+
+        preKtas.updateAiKtas(request.getLevel(), request.getReasoning(),
+                request.getStage2(), request.getStage3(), request.getStage4());
 
         String description = oldLevel != null
-                ? "AI KTAS " + oldLevel + "→" + request.getLevel() + " 변경"
-                : "AI KTAS " + request.getLevel() + " 설정";
+                ? "AI 중증도 판단 " + oldLevel + "→" + request.getLevel() + "등급 변경"
+                : "AI 중증도 판단 " + request.getLevel() + "등급 설정";
         eventLogService.log(session, EventType.AI_KTAS_CHANGE, description);
 
-        if (preKtas.isSynced()) {
-            eventLogService.log(session, EventType.PARAMEDIC_KTAS_CHANGE,
-                    "구급대원 KTAS " + request.getLevel() + " 동기화 (AI 연동)");
+        // 등급 변경 또는 stage 변경 감지 → 판단근거 자동 로그
+        boolean levelChanged = !Objects.equals(oldLevel, request.getLevel());
+        boolean stageChanged = !Objects.equals(oldStage2, request.getStage2())
+                || !Objects.equals(oldStage3, request.getStage3())
+                || !Objects.equals(oldStage4, request.getStage4());
+        if ((levelChanged || stageChanged) && request.getReasoning() != null) {
+            eventLogService.log(session, EventType.AI_REASONING_SAVED, "판단근거: " + request.getReasoning());
         }
 
         return PreKtasResponse.from(preKtas);
@@ -61,12 +72,12 @@ public class PreKtasService {
         preKtas.updateParamedicKtas(request.getLevel());
 
         String description = oldLevel != null
-                ? "구급대원 KTAS " + oldLevel + "→" + request.getLevel() + " 변경"
-                : "구급대원 KTAS " + request.getLevel() + " 설정";
+                ? "사용자 중증도 " + oldLevel + "→" + request.getLevel() + "등급 변경"
+                : "사용자 중증도 " + request.getLevel() + "등급 설정";
         eventLogService.log(session, EventType.PARAMEDIC_KTAS_CHANGE, description);
 
         if (wasSynced) {
-            eventLogService.log(session, EventType.SYNC_TOGGLE, "KTAS 동기화 OFF (수동 변경)");
+            eventLogService.log(session, EventType.SYNC_TOGGLE, "AI 동기화 OFF");
         }
 
         return PreKtasResponse.from(preKtas);
@@ -81,7 +92,7 @@ public class PreKtasService {
         preKtas.toggleSync(request.getSynced());
 
         String syncStatus = request.getSynced() ? "ON" : "OFF";
-        eventLogService.log(session, EventType.SYNC_TOGGLE, "KTAS 동기화 " + syncStatus);
+        eventLogService.log(session, EventType.SYNC_TOGGLE, "AI 동기화 " + syncStatus);
 
         return PreKtasResponse.from(preKtas);
     }

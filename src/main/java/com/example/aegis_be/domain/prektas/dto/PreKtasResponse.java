@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Schema(description = "KTAS 정보 응답")
 @Getter
@@ -20,6 +21,18 @@ public class PreKtasResponse {
 
     @Schema(description = "AI 판정 근거", example = "환자 호흡곤란 및 의식 저하로 KTAS 3 판정")
     private String aiReasoning;
+
+    @Schema(description = "2단계 분석 결과")
+    private String stage2;
+
+    @Schema(description = "3단계 분석 결과")
+    private String stage3;
+
+    @Schema(description = "4단계 분석 결과")
+    private String stage4;
+
+    @Schema(description = "AI 추천 진료과 목록", example = "[\"내과\", \"외과\"]")
+    private List<String> aiDepartments;
 
     @Schema(description = "구급대원 판정 KTAS 등급", example = "2")
     private Integer paramedicKtasLevel;
@@ -38,6 +51,10 @@ public class PreKtasResponse {
                 .sessionId(preKtas.getDispatchSession().getId())
                 .aiKtasLevel(preKtas.getAiKtasLevel())
                 .aiReasoning(preKtas.getAiReasoning())
+                .stage2(preKtas.getStage2())
+                .stage3(preKtas.getStage3())
+                .stage4(preKtas.getStage4())
+                .aiDepartments(preKtas.getAiDepartments())
                 .paramedicKtasLevel(preKtas.getParamedicKtasLevel())
                 .synced(preKtas.isSynced())
                 .createdAt(preKtas.getCreatedAt())

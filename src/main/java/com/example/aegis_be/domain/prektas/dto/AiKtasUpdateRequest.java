@@ -20,4 +20,13 @@ public class AiKtasUpdateRequest {
 
     @Schema(description = "AI 판정 근거", example = "환자 호흡곤란 및 의식 저하로 KTAS 3 판정")
     private String reasoning;
+
+    @Schema(description = "2단계 분석 결과", example = "호흡곤란 증상 확인")
+    private String stage2;
+
+    @Schema(description = "3단계 분석 결과", example = "의식 저하 동반")
+    private String stage3;
+
+    @Schema(description = "4단계 분석 결과", example = "KTAS 3등급 최종 판정")
+    private String stage4;
 }

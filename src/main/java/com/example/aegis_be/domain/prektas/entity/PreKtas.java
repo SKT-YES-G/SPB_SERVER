@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "pre_ktas", indexes = {
@@ -30,6 +31,19 @@ public class PreKtas {
     @Column(name = "ai_reasoning", columnDefinition = "TEXT")
     private String aiReasoning;
 
+    @Column(name = "stage2", columnDefinition = "TEXT")
+    private String stage2;
+
+    @Column(name = "stage3", columnDefinition = "TEXT")
+    private String stage3;
+
+    @Column(name = "stage4", columnDefinition = "TEXT")
+    private String stage4;
+
+    @Column(name = "ai_departments", columnDefinition = "TEXT")
+    @Convert(converter = StringListConverter.class)
+    private List<String> aiDepartments;
+
     @Column(name = "paramedic_ktas_level")
     private Integer paramedicKtasLevel;
 
@@ -48,9 +62,12 @@ public class PreKtas {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void updateAiKtas(Integer level, String reasoning) {
+    public void updateAiKtas(Integer level, String reasoning, String stage2, String stage3, String stage4) {
         this.aiKtasLevel = level;
         this.aiReasoning = reasoning;
+        this.stage2 = stage2;
+        this.stage3 = stage3;
+        this.stage4 = stage4;
         if (this.synced) {
             this.paramedicKtasLevel = level;
         }
@@ -60,6 +77,11 @@ public class PreKtas {
     public void updateParamedicKtas(Integer level) {
         this.paramedicKtasLevel = level;
         this.synced = false;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateAiDepartments(List<String> departments) {
+        this.aiDepartments = departments;
         this.updatedAt = LocalDateTime.now();
     }
 
