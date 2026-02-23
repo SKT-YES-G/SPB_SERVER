@@ -1,11 +1,16 @@
 package com.example.aegis_be.domain.medical.service;
 
+import com.example.aegis_be.domain.eventlog.entity.EventLog;
+import com.example.aegis_be.domain.eventlog.entity.EventType;
+import com.example.aegis_be.domain.eventlog.service.EventLogService;
 import com.example.aegis_be.domain.medical.client.EmergencyApiClient;
 import com.example.aegis_be.domain.medical.client.dto.BedAvailabilityItem;
 import com.example.aegis_be.domain.medical.client.dto.HospitalLocationItem;
 import com.example.aegis_be.domain.medical.dto.HospitalRankItem;
 import com.example.aegis_be.domain.medical.dto.HospitalSearchRequest;
 import com.example.aegis_be.domain.medical.dto.HospitalSearchResponse;
+import com.example.aegis_be.domain.prektas.repository.PreKtasRepository;
+import com.example.aegis_be.global.client.AiApiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -60,6 +65,9 @@ public class MedicalMapService {
     };
 
     private final EmergencyApiClient emergencyApiClient;
+    private final PreKtasRepository preKtasRepository;
+    private final EventLogService eventLogService;
+    private final AiApiClient aiApiClient;
 
     public HospitalSearchResponse searchHospitals(HospitalSearchRequest request) {
         Integer ktasLevel = request.getKtasLevel();
@@ -81,7 +89,14 @@ public class MedicalMapService {
 
         boolean ktasApplied = ktasLevel != null;
         List<String> departments = request.getDepartments();
-        boolean deptFilterActive = departments != null && !departments.isEmpty();
+
+        // sessionId가 있고 departments가 없으면 AI 진료과 추천 자동 호출
+        if ((departments == null || departments.isEmpty()) && request.getSessionId() != null) {
+            departments = resolveAiDepartments(request.getSessionId());
+        }
+
+        final List<String> finalDepartments = departments;
+        boolean deptFilterActive = finalDepartments != null && !finalDepartments.isEmpty();
 
         // 중복 제거 + Filter 0: 응급실 운영 중(hvamyn)인 병원만
         List<HospitalLocationItem> filtered = hospitals.stream()
@@ -124,7 +139,7 @@ public class MedicalMapService {
                         if (dutyInf == null || dutyInf.isBlank()) {
                             return false;
                         }
-                        return departments.stream().anyMatch(dutyInf::contains);
+                        return finalDepartments.stream().anyMatch(dutyInf::contains);
                     })
                     .toList();
 
@@ -265,6 +280,37 @@ public class MedicalMapService {
             if (isLocalInstitution) return 1.0;
             if (isLocalCenter) return 0.5;
             return 0.2;
+        }
+    }
+
+    private List<String> resolveAiDepartments(Long sessionId) {
+        try {
+            List<EventLog> reasoningLogs = eventLogService.findBySessionIdAndEventType(sessionId, EventType.AI_REASONING_SAVED);
+            if (reasoningLogs.isEmpty()) {
+                log.info("세션 {} 에 AI_REASONING_SAVED 이벤트 없음, 진료과 추천 건너뜀", sessionId);
+                return null;
+            }
+
+            String combinedText = reasoningLogs.stream()
+                    .map(EventLog::getDescription)
+                    .collect(Collectors.joining("\n"));
+
+            log.info("세션 {} AI 진료과 추천 요청, reasoning 텍스트 길이: {}", sessionId, combinedText.length());
+
+            List<String> departments = aiApiClient.requestDepartmentRecommendation(combinedText);
+            log.info("세션 {} AI 추천 진료과: {}", sessionId, departments);
+
+            // PreKtas에 명시적 save (트랜잭션 밖이므로 dirty checking 불가)
+            preKtasRepository.findByDispatchSessionId(sessionId)
+                    .ifPresent(preKtas -> {
+                        preKtas.updateAiDepartments(departments);
+                        preKtasRepository.save(preKtas);
+                    });
+
+            return departments;
+        } catch (Exception e) {
+            log.warn("세션 {} AI 진료과 추천 실패, 진료과 필터 없이 진행: {}", sessionId, e.getMessage());
+            return null;
         }
     }
 

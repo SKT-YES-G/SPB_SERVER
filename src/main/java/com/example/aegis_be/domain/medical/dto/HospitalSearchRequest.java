@@ -33,4 +33,7 @@ public class HospitalSearchRequest {
 
     @Schema(description = "AI 팀 추천 진료과 목록", example = "[\"내과\", \"외과\"]")
     private List<String> departments;
+
+    @Schema(description = "출동 세션 ID (진료과 자동 추천 시 필요)", example = "1")
+    private Long sessionId;
 }
