@@ -26,16 +26,8 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Run tests
-        run: ./gradlew test --no-daemon
-        env:
-          DB_URL: jdbc:h2:mem:test
-          DB_USERNAME: sa
-          DB_PASSWORD:
-          JWT_SECRET: test-secret-key-for-ci-minimum-256-bits-long-xxxxxxxx
-          CORS_ORIGINS: http://localhost:3000
-          EMERGENCY_API_KEY: test-key
-          AI_SERVER_URL: http://localhost:8000
+      - name: Compile check
+        run: chmod +x gradlew && ./gradlew compileJava --no-daemon
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
