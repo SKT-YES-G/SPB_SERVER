@@ -71,23 +71,19 @@ public class AmbulanceReportController {
                 ambulanceReportService.getReport(userDetails.getName(), sessionId));
     }
 
-    // === AI용 PATCH ===
+    // === AI 구급일지 생성 ===
 
     @Operation(
-            summary = "[AI] 체크리스트 업데이트",
+            summary = "AI 구급일지 생성",
             description = """
-                    **호출 주체**: AI 서버 (FastAPI)
-                    **인증**: 프론트에서 전달받은 JWT를 Authorization 헤더에 포함
+                    **호출 주체**: 프론트엔드
 
-                    AI가 제공하는 68개 체크리스트 이진 배열을 저장/업데이트합니다.
-                    구급대원 확정 체크리스트(checklistData)에는 영향을 주지 않습니다.
+                    AI 서버를 호출하여 구급일지의 체크리스트 + 요약을 자동 생성합니다.
 
-                    **요청 예시**:
-                    ```json
-                    { "aiChecklistData": [0, 1, 0, 1, ...] }
-                    ```
-
-                    **자동 처리**: 구급일지가 없으면 자동 생성 후 업데이트
+                    **동작**:
+                    1. 해당 세션의 AI_REASONING_SAVED 이벤트 로그에서 판단근거 텍스트 추출
+                    2. AI 서버 POST /report/auto-select 호출
+                    3. 응답받은 summary + aiChecklistData를 구급일지에 저장
 
                     **인증**: 필수 (Bearer Token)
                     """
@@ -95,11 +91,7 @@ public class AmbulanceReportController {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "업데이트 성공 - 구급일지 전체 정보 반환"
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "요청 형식 오류 - 체크리스트 데이터 누락"
+                    description = "생성 성공 - 구급일지 전체 정보 반환"
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
@@ -108,17 +100,23 @@ public class AmbulanceReportController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
                     description = "세션 없음 - 해당 ID의 세션이 존재하지 않거나 접근 권한 없음"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "502",
+                    description = "AI 서버 오류 - AI 서버 호출 실패"
             )
     })
-    @PatchMapping("/ai-checklist")
-    public ApiResponse<AmbulanceReportResponse> updateAiChecklist(
+    @PostMapping("/generate")
+    public ApiResponse<AmbulanceReportResponse> generateReport(
+            @RequestHeader("Authorization") String authorization,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "출동 세션 ID", example = "1", required = true)
-            @PathVariable Long sessionId,
-            @Valid @RequestBody AiChecklistUpdateRequest request) {
+            @PathVariable Long sessionId) {
         return ApiResponse.success(
-                ambulanceReportService.updateAiChecklist(userDetails.getName(), sessionId, request));
+                ambulanceReportService.generateReport(authorization, userDetails.getName(), sessionId));
     }
+
+    // === AI용 PATCH ===
 
     @Operation(
             summary = "[AI] 활력징후(OCR) 업데이트",
@@ -147,7 +145,7 @@ public class AmbulanceReportController {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "업데이트 성공 - 구급일지 전체 정보 반환"
+                    description = "업데이트 성공 - 활력징후 정보 반환"
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
@@ -163,60 +161,13 @@ public class AmbulanceReportController {
             )
     })
     @PatchMapping("/vitals")
-    public ApiResponse<AmbulanceReportResponse> updateVitals(
+    public ApiResponse<VitalsResponse> updateVitals(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "출동 세션 ID", example = "1", required = true)
             @PathVariable Long sessionId,
             @Valid @RequestBody VitalsUpdateRequest request) {
         return ApiResponse.success(
                 ambulanceReportService.updateVitals(userDetails.getName(), sessionId, request));
-    }
-
-    @Operation(
-            summary = "[AI] 텍스트 요약 업데이트",
-            description = """
-                    **호출 주체**: AI 서버 (FastAPI)
-                    **인증**: 프론트에서 전달받은 JWT를 Authorization 헤더에 포함
-
-                    AI가 생성한 텍스트 요약을 저장/업데이트합니다.
-                    번역 기록, KTAS 판정 등을 종합한 환자 상태 요약문입니다.
-
-                    **요청 예시**:
-                    ```json
-                    { "summary": "60대 남성, 흉통 호소. KTAS 2등급..." }
-                    ```
-
-                    **자동 처리**: 구급일지가 없으면 자동 생성 후 업데이트
-
-                    **인증**: 필수 (Bearer Token)
-                    """
-    )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "업데이트 성공 - 구급일지 전체 정보 반환"
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "요청 형식 오류 - 요약 텍스트 누락"
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "401",
-                    description = "인증 실패 - 유효하지 않은 Access Token"
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "404",
-                    description = "세션 없음 - 해당 ID의 세션이 존재하지 않거나 접근 권한 없음"
-            )
-    })
-    @PatchMapping("/summary")
-    public ApiResponse<AmbulanceReportResponse> updateSummary(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Parameter(description = "출동 세션 ID", example = "1", required = true)
-            @PathVariable Long sessionId,
-            @Valid @RequestBody SummaryUpdateRequest request) {
-        return ApiResponse.success(
-                ambulanceReportService.updateSummary(userDetails.getName(), sessionId, request));
     }
 
     // === 구급대원용 PATCH ===

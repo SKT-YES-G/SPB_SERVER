@@ -4,15 +4,22 @@ import com.example.aegis_be.domain.auth.entity.FireStation;
 import com.example.aegis_be.domain.auth.repository.FireStationRepository;
 import com.example.aegis_be.domain.dispatch.entity.DispatchSession;
 import com.example.aegis_be.domain.dispatch.repository.DispatchSessionRepository;
+import com.example.aegis_be.domain.eventlog.entity.EventLog;
+import com.example.aegis_be.domain.eventlog.entity.EventType;
+import com.example.aegis_be.domain.eventlog.service.EventLogService;
 import com.example.aegis_be.domain.report.dto.*;
 import com.example.aegis_be.domain.report.entity.AmbulanceReport;
 import com.example.aegis_be.domain.report.repository.AmbulanceReportRepository;
+import com.example.aegis_be.global.client.AiApiClient;
 import com.example.aegis_be.global.error.BusinessException;
 import com.example.aegis_be.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -23,6 +30,8 @@ public class AmbulanceReportService {
     private final AmbulanceReportRepository ambulanceReportRepository;
     private final DispatchSessionRepository dispatchSessionRepository;
     private final FireStationRepository fireStationRepository;
+    private final EventLogService eventLogService;
+    private final AiApiClient aiApiClient;
 
     @Transactional
     public AmbulanceReportResponse getReport(String name, Long sessionId) {
@@ -31,19 +40,37 @@ public class AmbulanceReportService {
         return AmbulanceReportResponse.from(report);
     }
 
-    // === AI용 PATCH ===
+    // === AI 구급일지 생성 ===
 
-    @Transactional
-    public AmbulanceReportResponse updateAiChecklist(String name, Long sessionId, AiChecklistUpdateRequest request) {
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public AmbulanceReportResponse generateReport(String authorization, String name, Long sessionId) {
         DispatchSession session = findSessionByFireStation(name, sessionId);
         AmbulanceReport report = findOrCreateReport(session, sessionId);
-        report.updateAiChecklist(request.getAiChecklistData());
-        log.info("AI checklist updated: reportId={}, sessionId={}", report.getId(), sessionId);
+
+        // EventLog에서 AI_REASONING_SAVED 이벤트의 reasoning 텍스트 추출
+        List<String> reasoningList = eventLogService
+                .findBySessionIdAndEventType(sessionId, EventType.AI_REASONING_SAVED)
+                .stream()
+                .map(EventLog::getDescription)
+                .toList();
+
+        // AI 서버 호출 (트랜잭션 밖 → DB 커넥션 점유 안 함)
+        ReportGenerateResponse aiResponse = aiApiClient.requestReportGeneration(authorization, sessionId, reasoningList);
+
+        // 명시적 save (dirty checking 대신)
+        report.updateSummary(aiResponse.getSummary());
+        report.updateAiChecklist(aiResponse.getAiChecklistData());
+        ambulanceReportRepository.save(report);
+
+        log.info("Report generated: reportId={}, sessionId={}, reasoningCount={}",
+                report.getId(), sessionId, reasoningList.size());
         return AmbulanceReportResponse.from(report);
     }
 
+    // === AI용 PATCH ===
+
     @Transactional
-    public AmbulanceReportResponse updateVitals(String name, Long sessionId, VitalsUpdateRequest request) {
+    public VitalsResponse updateVitals(String name, Long sessionId, VitalsUpdateRequest request) {
         DispatchSession session = findSessionByFireStation(name, sessionId);
         AmbulanceReport report = findOrCreateReport(session, sessionId);
         report.updateVitals(
@@ -51,16 +78,7 @@ public class AmbulanceReportService {
                 request.getTempC(), request.getSpO2(), request.getGlucose()
         );
         log.info("Vitals updated: reportId={}, sessionId={}", report.getId(), sessionId);
-        return AmbulanceReportResponse.from(report);
-    }
-
-    @Transactional
-    public AmbulanceReportResponse updateSummary(String name, Long sessionId, SummaryUpdateRequest request) {
-        DispatchSession session = findSessionByFireStation(name, sessionId);
-        AmbulanceReport report = findOrCreateReport(session, sessionId);
-        report.updateSummary(request.getSummary());
-        log.info("Summary updated: reportId={}, sessionId={}", report.getId(), sessionId);
-        return AmbulanceReportResponse.from(report);
+        return VitalsResponse.from(report);
     }
 
     // === 구급대원용 PATCH ===
