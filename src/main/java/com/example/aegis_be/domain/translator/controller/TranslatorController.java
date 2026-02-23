@@ -118,12 +118,12 @@ public class TranslatorController {
     }
 
     @Operation(
-            summary = "쉬운 번역 요청",
+            summary = "쉬운 번역 생성",
             description = """
                     **호출 주체**: 프론트엔드
 
                     해당 번역 기록의 쉬운 번역문을 AI 서버에 전달하여 쉬운 번역을 생성합니다.
-                    요청 본문 없이 호출하면, 서버가 AI에 쉬운 번역을 요청하고
+                    서버가 AI에 쉬운 번역을 요청하고
                     결과를 저장한 뒤 즉시 반환합니다.
 
                     **동작 흐름**:

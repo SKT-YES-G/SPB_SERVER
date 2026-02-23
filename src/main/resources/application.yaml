@@ -45,6 +45,8 @@ cors:
 ai-server:
   base-url: ${AI_SERVER_URL:http://localhost:8000}
   easy-translation-path: /translate/simplify
+  report-generation-path: /report/auto-select
+  department-pick-path: /departments/pick
 
 emergency-api:
   base-url: https://apis.data.go.kr/B552657/ErmctInfoInqireService

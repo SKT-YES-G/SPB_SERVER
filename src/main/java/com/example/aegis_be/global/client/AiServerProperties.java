@@ -13,4 +13,6 @@ public class AiServerProperties {
 
     private String baseUrl;
     private String easyTranslationPath;
+    private String reportGenerationPath;
+    private String departmentPickPath;
 }
