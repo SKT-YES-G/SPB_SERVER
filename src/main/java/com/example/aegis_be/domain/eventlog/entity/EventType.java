@@ -6,5 +6,5 @@ public enum EventType {
     AI_KTAS_CHANGE,
     PARAMEDIC_KTAS_CHANGE,
     SYNC_TOGGLE,
-    KEYWORD_DETECTED
+    AI_REASONING_SAVED
 }

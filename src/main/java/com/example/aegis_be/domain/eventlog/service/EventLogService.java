@@ -5,7 +5,6 @@ import com.example.aegis_be.domain.auth.repository.FireStationRepository;
 import com.example.aegis_be.domain.dispatch.entity.DispatchSession;
 import com.example.aegis_be.domain.dispatch.repository.DispatchSessionRepository;
 import com.example.aegis_be.domain.eventlog.dto.EventLogResponse;
-import com.example.aegis_be.domain.eventlog.dto.EventLogSaveRequest;
 import com.example.aegis_be.domain.eventlog.entity.EventLog;
 import com.example.aegis_be.domain.eventlog.entity.EventType;
 import com.example.aegis_be.domain.eventlog.repository.EventLogRepository;
@@ -26,14 +25,6 @@ public class EventLogService {
     private final DispatchSessionRepository dispatchSessionRepository;
     private final FireStationRepository fireStationRepository;
 
-    @Transactional
-    public EventLogResponse saveLog(String name, Long sessionId, EventLogSaveRequest request) {
-        DispatchSession session = findSessionByFireStation(name, sessionId);
-        EventLog eventLog = new EventLog(session, EventType.KEYWORD_DETECTED, request.getDescription());
-        eventLogRepository.save(eventLog);
-        return EventLogResponse.from(eventLog);
-    }
-
     public List<EventLogResponse> getLogs(String name, Long sessionId) {
         findSessionByFireStation(name, sessionId);
         return eventLogRepository.findByDispatchSessionIdOrderByCreatedAtAsc(sessionId)
@@ -45,6 +36,10 @@ public class EventLogService {
     @Transactional
     public void log(DispatchSession session, EventType eventType, String description) {
         eventLogRepository.save(new EventLog(session, eventType, description));
+    }
+
+    public List<EventLog> findBySessionIdAndEventType(Long sessionId, EventType eventType) {
+        return eventLogRepository.findByDispatchSessionIdAndEventTypeOrderByCreatedAtAsc(sessionId, eventType);
     }
 
     private DispatchSession findSessionByFireStation(String name, Long sessionId) {
