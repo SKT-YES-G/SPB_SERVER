@@ -74,8 +74,7 @@ public class AuthController {
 
                     **보안**:
                     - Refresh Token은 서버 Redis에 저장되어 관리됩니다.
-                    - 동일 소방서로 재로그인 시 기존 Refresh Token은 무효화됩니다.
-
+                   
                     **인증**: 불필요 (공개 API)
                     """
     )
