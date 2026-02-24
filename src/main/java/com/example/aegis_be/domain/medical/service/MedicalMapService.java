@@ -103,7 +103,11 @@ public class MedicalMapService {
                 .values().stream()
                 .filter(loc -> {
                     BedAvailabilityItem bed = bedMap.get(loc.getHpid());
-                    return bed != null && "Y".equalsIgnoreCase(bed.getHvamyn());
+                    if (bed == null || !"Y".equalsIgnoreCase(bed.getHvamyn())) {
+                        return false;
+                    }
+                    int available = Math.max(bed.getHvec(), 0) + Math.max(bed.getHvicc(), 0) + Math.max(bed.getHvgc(), 0);
+                    return available > 0;
                 })
                 .toList();
 
