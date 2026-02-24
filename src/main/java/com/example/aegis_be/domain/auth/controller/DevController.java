@@ -4,6 +4,7 @@ import com.example.aegis_be.domain.auth.dto.FireStationCreateRequest;
 import com.example.aegis_be.domain.auth.entity.FireStation;
 import com.example.aegis_be.domain.auth.repository.FireStationRepository;
 import com.example.aegis_be.domain.dispatch.repository.DispatchSessionRepository;
+import com.example.aegis_be.domain.prektas.repository.PreKtasRepository;
 import com.example.aegis_be.global.common.ApiResponse;
 import com.example.aegis_be.global.error.BusinessException;
 import com.example.aegis_be.global.error.ErrorCode;
@@ -25,6 +26,7 @@ public class DevController {
 
     private final FireStationRepository fireStationRepository;
     private final DispatchSessionRepository dispatchSessionRepository;
+    private final PreKtasRepository preKtasRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Operation(summary = "소방서 계정 생성", description = "테스트용 소방서 계정 생성")
@@ -61,6 +63,15 @@ public class DevController {
         dispatchSessionRepository.deleteAllByFireStationId(id);
         fireStationRepository.deleteById(id);
         return ApiResponse.success();
+    }
+
+    @Operation(summary = "환자 AI 추천 진료과 조회", description = "세션 ID로 AI 추천 진료과 목록 조회 (테스트용)")
+    @GetMapping("/sessions/{sessionId}/departments")
+    public ApiResponse<List<String>> getSessionDepartments(@PathVariable Long sessionId) {
+        List<String> departments = preKtasRepository.findByDispatchSessionId(sessionId)
+                .map(preKtas -> preKtas.getAiDepartments() != null ? preKtas.getAiDepartments() : List.<String>of())
+                .orElse(List.of());
+        return ApiResponse.success(departments);
     }
 
     public record FireStationListItem(Long id, String name) {}

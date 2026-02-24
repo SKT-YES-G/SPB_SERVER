@@ -17,6 +17,9 @@ public class HospitalSearchResponse {
     @Schema(description = "KTAS 기반 점수 적용 여부", example = "true")
     private boolean ktasApplied;
 
+    @Schema(description = "AI 추천 진료과 목록", example = "[\"정형외과\", \"신경외과\"]")
+    private List<String> recommendedDepartments;
+
     @Schema(description = "순위별 병원 목록")
     private List<HospitalRankItem> hospitals;
 }

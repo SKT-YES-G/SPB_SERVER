@@ -88,12 +88,11 @@ public class MedicalMapService {
         }
 
         boolean ktasApplied = ktasLevel != null;
-        List<String> departments = request.getDepartments();
 
-        // sessionId가 있고 departments가 없으면 AI 진료과 추천 자동 호출
-        if ((departments == null || departments.isEmpty()) && request.getSessionId() != null) {
-            departments = resolveAiDepartments(request.getSessionId());
-        }
+        // sessionId가 있으면 AI 진료과 자동 조회
+        List<String> departments = request.getSessionId() != null
+                ? resolveAiDepartments(request.getSessionId())
+                : null;
 
         final List<String> finalDepartments = departments;
         boolean deptFilterActive = finalDepartments != null && !finalDepartments.isEmpty();
@@ -213,6 +212,7 @@ public class MedicalMapService {
         return HospitalSearchResponse.builder()
                 .totalCount(ranked.size())
                 .ktasApplied(ktasApplied)
+                .recommendedDepartments(finalDepartments)
                 .hospitals(ranked)
                 .build();
     }
@@ -284,6 +284,17 @@ public class MedicalMapService {
     }
 
     private List<String> resolveAiDepartments(Long sessionId) {
+        // 1. PreKtas에 이미 저장된 진료과가 있으면 바로 반환
+        var preKtasOpt = preKtasRepository.findByDispatchSessionId(sessionId);
+        if (preKtasOpt.isPresent()) {
+            List<String> existing = preKtasOpt.get().getAiDepartments();
+            if (existing != null && !existing.isEmpty()) {
+                log.info("세션 {} PreKtas에 저장된 AI 진료과 사용: {}", sessionId, existing);
+                return existing;
+            }
+        }
+
+        // 2. 없으면 이벤트 로그의 판단근거 더미로 AI API 호출
         try {
             List<EventLog> reasoningLogs = eventLogService.findBySessionIdAndEventType(sessionId, EventType.AI_REASONING_SAVED);
             if (reasoningLogs.isEmpty()) {
@@ -295,17 +306,16 @@ public class MedicalMapService {
                     .map(EventLog::getDescription)
                     .collect(Collectors.joining("\n"));
 
-            log.info("세션 {} AI 진료과 추천 요청, reasoning 텍스트 길이: {}", sessionId, combinedText.length());
+            log.info("세션 {} AI 진료과 추천 요청, reasoning 로그 {}건, 텍스트 길이: {}", sessionId, reasoningLogs.size(), combinedText.length());
 
             List<String> departments = aiApiClient.requestDepartmentRecommendation(combinedText);
             log.info("세션 {} AI 추천 진료과: {}", sessionId, departments);
 
             // PreKtas에 명시적 save (트랜잭션 밖이므로 dirty checking 불가)
-            preKtasRepository.findByDispatchSessionId(sessionId)
-                    .ifPresent(preKtas -> {
-                        preKtas.updateAiDepartments(departments);
-                        preKtasRepository.save(preKtas);
-                    });
+            preKtasOpt.ifPresent(preKtas -> {
+                preKtas.updateAiDepartments(departments);
+                preKtasRepository.save(preKtas);
+            });
 
             return departments;
         } catch (Exception e) {
