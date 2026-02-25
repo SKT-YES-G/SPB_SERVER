@@ -25,6 +25,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          cache: gradle
 
       - name: Compile check
         run: chmod +x gradlew && ./gradlew compileJava --no-daemon
@@ -109,4 +110,4 @@ jobs:
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
-          wait-for-minutes: 5
+          wait-for-minutes: 10
