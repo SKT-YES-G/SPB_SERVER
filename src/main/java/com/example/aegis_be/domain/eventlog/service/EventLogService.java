@@ -38,6 +38,14 @@ public class EventLogService {
         eventLogRepository.save(new EventLog(session, eventType, description));
     }
 
+    @Transactional
+    public EventLogResponse createUserInputLog(String name, Long sessionId, String description) {
+        DispatchSession session = findSessionByFireStation(name, sessionId);
+        EventLog eventLog = eventLogRepository.save(
+                new EventLog(session, EventType.USER_INPUT, "사용자 입력: " + description));
+        return EventLogResponse.from(eventLog);
+    }
+
     public List<EventLog> findBySessionIdAndEventType(Long sessionId, EventType eventType) {
         return eventLogRepository.findByDispatchSessionIdAndEventTypeOrderByCreatedAtAsc(sessionId, eventType);
     }
