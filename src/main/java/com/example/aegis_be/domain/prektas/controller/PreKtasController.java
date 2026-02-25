@@ -40,11 +40,11 @@ public class PreKtasController {
                     - 동기화 ON: AI 중증도 판단 변경 → 구급대원 중증도 등급도 자동 반영 (별도 로그 없음)
                     - 동기화 OFF: AI 중증도 판단만 변경, 구급대원 중증도 등급 유지
 
-                    **판단근거 자동 로그**:
-                    - stage2/3/4 중 하나라도 변경되면 reasoning을 AI_REASONING_SAVED 이벤트로 자동 기록
-                    - 혹은 중증도 등급 변경 시 자동 기록
+                    **이벤트 로그 기록 조건**:
+                    - AI 중증도 등급이 실제로 변경된 경우에만 AI_KTAS_CHANGE + AI_REASONING_SAVED 이벤트 자동 기록
+                    - stage2/3/4만 변경되고 등급이 동일하면 이벤트 로그 미기록
 
-                    **자동 처리**: PreKTAS 정보 없으면 자동 생성, 이벤트 로그 자동 기록
+                    **자동 처리**: PreKTAS 정보 없으면 자동 생성
 
                     **요청 예시**:
                     ```json
@@ -97,7 +97,7 @@ public class PreKtasController {
 
                     **자동 처리 항목**:
                     - PreKTAS 정보가 없으면 최초 호출 시 자동 생성 (lazy 생성)
-                    - PARAMEDIC_KTAS_CHANGE 이벤트 로그 자동 기록
+                    - 등급이 실제로 변경된 경우에만 PARAMEDIC_KTAS_CHANGE 이벤트 로그 기록
                     - AI 동기화가 ON이었을 경우 SYNC_TOGGLE 이벤트 로그 추가 기록
 
                     **인증**: 필수 (Bearer Token)

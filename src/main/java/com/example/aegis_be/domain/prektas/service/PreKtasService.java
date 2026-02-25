@@ -37,25 +37,21 @@ public class PreKtasService {
                 .orElseGet(() -> preKtasRepository.save(new PreKtas(session)));
 
         Integer oldLevel = preKtas.getAiKtasLevel();
-        String oldStage2 = preKtas.getStage2();
-        String oldStage3 = preKtas.getStage3();
-        String oldStage4 = preKtas.getStage4();
 
         preKtas.updateAiKtas(request.getLevel(), request.getReasoning(),
                 request.getStage2(), request.getStage3(), request.getStage4());
 
-        String description = oldLevel != null
-                ? "AI 중증도 판단 " + oldLevel + "→" + request.getLevel() + "등급 변경"
-                : "AI 중증도 판단 " + request.getLevel() + "등급 설정";
-        eventLogService.log(session, EventType.AI_KTAS_CHANGE, description);
-
-        // 등급 변경 또는 stage 변경 감지 → 판단근거 자동 로그
+        // 등급 변경 시에만 이벤트 로그 기록
         boolean levelChanged = !Objects.equals(oldLevel, request.getLevel());
-        boolean stageChanged = !Objects.equals(oldStage2, request.getStage2())
-                || !Objects.equals(oldStage3, request.getStage3())
-                || !Objects.equals(oldStage4, request.getStage4());
-        if ((levelChanged || stageChanged) && request.getReasoning() != null) {
-            eventLogService.log(session, EventType.AI_REASONING_SAVED, "판단근거: " + request.getReasoning());
+        if (levelChanged) {
+            String description = oldLevel != null
+                    ? "AI 중증도 판단 " + oldLevel + "→" + request.getLevel() + "등급 변경"
+                    : "AI 중증도 판단 " + request.getLevel() + "등급 설정";
+            eventLogService.log(session, EventType.AI_KTAS_CHANGE, description);
+
+            if (request.getReasoning() != null) {
+                eventLogService.log(session, EventType.AI_REASONING_SAVED, "판단근거: " + request.getReasoning());
+            }
         }
 
         return PreKtasResponse.from(preKtas);
@@ -71,10 +67,14 @@ public class PreKtasService {
         boolean wasSynced = preKtas.isSynced();
         preKtas.updateParamedicKtas(request.getLevel());
 
-        String description = oldLevel != null
-                ? "사용자 중증도 " + oldLevel + "→" + request.getLevel() + "등급 변경"
-                : "사용자 중증도 " + request.getLevel() + "등급 설정";
-        eventLogService.log(session, EventType.PARAMEDIC_KTAS_CHANGE, description);
+        // 등급 변경 시에만 이벤트 로그 기록
+        boolean levelChanged = !Objects.equals(oldLevel, request.getLevel());
+        if (levelChanged) {
+            String description = oldLevel != null
+                    ? "사용자 중증도 " + oldLevel + "→" + request.getLevel() + "등급 변경"
+                    : "사용자 중증도 " + request.getLevel() + "등급 설정";
+            eventLogService.log(session, EventType.PARAMEDIC_KTAS_CHANGE, description);
+        }
 
         if (wasSynced) {
             eventLogService.log(session, EventType.SYNC_TOGGLE, "AI 동기화 OFF");

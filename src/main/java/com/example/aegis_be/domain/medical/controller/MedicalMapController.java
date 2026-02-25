@@ -29,9 +29,13 @@ public class MedicalMapController {
                     현재 위치 좌표를 기반으로 최적의 응급 병원 목록을 검색합니다.
 
                     **필터링**:
-                    - Filter 0: 응급실 운영 중인 병원만 포함
-                    - Filter 1: 진료과 중 하나라도 일치하는 병원만 포함 (sessionId 입력 시)
-                    sessionId가 포함되면 AI 추천 진료과를 자동 조회하여 필터링합니다.
+                    - Filter 0: 응급실 운영 중이고, 가용 병상이 1개 이상인 병원만 포함
+                    - Filter 1: sessionId 입력 시 AI 추천 진료과를 자동 조회하여, 해당 진료과가 있는 병원만 포함
+
+                    **진료과 자동 조회 흐름** (sessionId 입력 시):
+                    1. PreKTAS에 저장된 AI 추천 진료과가 있으면 그대로 사용
+                    2. 없으면 해당 세션의 AI 판단근거(AI_REASONING_SAVED 로그)를 AI 서버에 전달하여 진료과 추천
+                    3. 추천 결과를 PreKTAS에 저장 후 필터링에 사용
 
                     **처리 흐름**:
                     - 좌표 기반 인접 시/도 2개를 자동 판별하여 병원 목록 통합 조회
@@ -49,6 +53,10 @@ public class MedicalMapController {
                     - KTAS 미입력 시: 거리 80% + 병상 20%
 
                     **응답 필드 (Response Fields)**:
+                    - totalCount (검색된 병원 수)
+                    - ktasApplied (KTAS 기반 점수 적용 여부)
+                    - recommendedDepartments (AI 추천 진료과 목록, sessionId 미입력 시 null)
+                    - hospitals (순위별 병원 목록):
                     - rank (순위)
                     - score (종합 점수, 0.0~1.0)
                     - hpid (병원 고유 ID)
